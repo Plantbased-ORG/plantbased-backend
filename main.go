@@ -26,6 +26,11 @@ func main() {
 		log.Fatal("Failed to run migrations:", err)
 	}
 
+	// Initialize Cloudinary
+	if err := utils.InitCloudinary(); err != nil {
+		log.Fatal("Failed to initialize Cloudinary:", err)
+	}
+
 	// Initialize Gin router
 	router := gin.Default()
 
