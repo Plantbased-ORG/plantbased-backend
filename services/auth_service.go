@@ -50,7 +50,7 @@ func (s *AuthService) Login(email, password string) (*models.LoginResponse, erro
 	}
 
 	// Verify password
-	if err := utils.ComparePassword(admin.PasswordHash, password); err != nil {
+	if !utils.CheckPasswordHash(password, admin.PasswordHash) {
 		return nil, errors.New("invalid email or password")
 	}
 
@@ -75,22 +75,13 @@ func (s *AuthService) Login(email, password string) (*models.LoginResponse, erro
 // RefreshToken generates a new access token from refresh token
 func (s *AuthService) RefreshToken(refreshToken string) (string, error) {
 	// Validate refresh token
-	token, err := utils.ValidateToken(refreshToken)
-	if err != nil || !token.Valid {
+	claims, err := utils.ValidateToken(refreshToken)
+	if err != nil {
 		return "", errors.New("invalid or expired refresh token")
 	}
 
-	// Extract claims
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return "", errors.New("invalid token claims")
-	}
-
-	adminID := int(claims["admin_id"].(float64))
-	email := claims["email"].(string)
-
 	// Generate new access token
-	newToken, err := utils.GenerateToken(adminID, email, 24*time.Hour)
+	newToken, err := utils.GenerateToken(claims.AdminID, claims.Email, 24*time.Hour)
 	if err != nil {
 		return "", err
 	}

@@ -17,12 +17,12 @@ func NewAdminService(db *sql.DB) *AdminService {
 
 func (s *AdminService) GetAdminByID(id int) (*models.Admin, error) {
 	var admin models.Admin
-	query := `SELECT id, email, name, created_at, updated_at FROM admins WHERE id = $1`
+	query := `SELECT id, email, full_name, created_at, updated_at FROM admins WHERE id = $1`
 	
 	err := s.db.QueryRow(query, id).Scan(
 		&admin.ID,
 		&admin.Email,
-		&admin.Name,
+		&admin.FullName,
 		&admin.CreatedAt,
 		&admin.UpdatedAt,
 	)
@@ -38,14 +38,13 @@ func (s *AdminService) GetAdminByID(id int) (*models.Admin, error) {
 }
 
 func (s *AdminService) UpdateAdmin(id int, req models.UpdateAdminRequest) (*models.Admin, error) {
-	// Build dynamic update query
-	query := `UPDATE admins SET name = $1, updated_at = NOW() WHERE id = $2 RETURNING id, email, name, created_at, updated_at`
+	query := `UPDATE admins SET full_name = $1, updated_at = NOW() WHERE id = $2 RETURNING id, email, full_name, created_at, updated_at`
 	
 	var admin models.Admin
 	err := s.db.QueryRow(query, req.Name, id).Scan(
 		&admin.ID,
 		&admin.Email,
-		&admin.Name,
+		&admin.FullName,
 		&admin.CreatedAt,
 		&admin.UpdatedAt,
 	)
@@ -58,7 +57,6 @@ func (s *AdminService) UpdateAdmin(id int, req models.UpdateAdminRequest) (*mode
 }
 
 func (s *AdminService) UpdatePassword(id int, currentPassword, newPassword string) error {
-	// Get current password hash
 	var passwordHash string
 	query := `SELECT password_hash FROM admins WHERE id = $1`
 	err := s.db.QueryRow(query, id).Scan(&passwordHash)
@@ -66,18 +64,15 @@ func (s *AdminService) UpdatePassword(id int, currentPassword, newPassword strin
 		return errors.New("admin not found")
 	}
 	
-	// Verify current password
 	if !utils.CheckPasswordHash(currentPassword, passwordHash) {
 		return errors.New("incorrect current password")
 	}
 	
-	// Hash new password
 	newHash, err := utils.HashPassword(newPassword)
 	if err != nil {
 		return err
 	}
 	
-	// Update password
 	updateQuery := `UPDATE admins SET password_hash = $1, updated_at = NOW() WHERE id = $2`
 	_, err = s.db.Exec(updateQuery, newHash, id)
 	return err
