@@ -37,6 +37,11 @@ type UpdateProfileRequest struct {
 	Email    string `json:"email" binding:"email"`
 }
 
+// UpdateAdminRequest represents admin update payload
+type UpdateAdminRequest struct {
+	Name string `json:"name" binding:"required"`
+}
+
 // Testimonial represents a customer review
 type Testimonial struct {
 	ID        int       `json:"id"`
