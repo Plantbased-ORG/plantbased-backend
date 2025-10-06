@@ -2,71 +2,42 @@ package main
 
 import (
 	"log"
-	"os"
+	"plantbased-backend/config"
+	"plantbased-backend/database"
+	"plantbased-backend/middleware"
+	"plantbased-backend/routes"
 
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	// Load environment variables
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, using system environment variables")
-	}
+	// Load configuration
+	cfg := config.LoadConfig()
 
-	// Initialize database connection
-	db, err := InitDB()
+	// Connect to database
+	db, err := database.InitDB(cfg)
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
 	defer db.Close()
 
 	// Run migrations
-	if err := RunMigrations(db); err != nil {
+	if err := database.RunMigrations(db); err != nil {
 		log.Fatal("Failed to run migrations:", err)
 	}
 
 	// Initialize Gin router
 	router := gin.Default()
 
-	// CORS middleware
-	router.Use(CORSMiddleware())
+	// Add CORS middleware
+	router.Use(middleware.CORSMiddleware())
 
-	// Health check endpoint
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status": "healthy",
-			"message": "PlantBased Backend is running",
-		})
-	})
-
-	// API routes
-	api := router.Group("/api/v1")
-	{
-		// Auth routes
-		auth := api.Group("/auth")
-		{
-			auth.POST("/login", LoginHandler(db))
-			auth.POST("/refresh", RefreshTokenHandler(db))
-		}
-
-		// Protected admin routes
-		admin := api.Group("/admin")
-		admin.Use(AuthMiddleware())
-		{
-			admin.GET("/profile", GetAdminProfileHandler(db))
-			admin.PUT("/profile", UpdateAdminProfileHandler(db))
-		}
-	}
+	// Setup routes
+	routes.SetupRoutes(router, db)
 
 	// Start server
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
-	log.Printf("Server starting on port %s...", port)
-	if err := router.Run(":" + port); err != nil {
+	log.Printf("Server starting on port %s...", cfg.Port)
+	if err := router.Run(":" + cfg.Port); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
 }
