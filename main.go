@@ -6,7 +6,7 @@ import (
 	"plantbased-backend/database"
 	"plantbased-backend/middleware"
 	"plantbased-backend/routes"
-
+	"plantbased-backend/utils"
 	"github.com/gin-gonic/gin"
 )
 
