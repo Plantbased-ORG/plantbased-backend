@@ -12,15 +12,14 @@ var DB *sql.DB
 
 // InitDB initializes and returns a database connection
 func InitDB(cfg *config.Config) (*sql.DB, error) {
-	// Build connection string
+	// Build connection string with SSL mode
 	connStr := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=require",
 		cfg.DBHost,
 		cfg.DBPort,
 		cfg.DBUser,
 		cfg.DBPassword,
 		cfg.DBName,
-		cfg.DBSSLMode,
 	)
 
 	// Open database connection
@@ -39,6 +38,7 @@ func InitDB(cfg *config.Config) (*sql.DB, error) {
 	db.SetMaxIdleConns(5)
 
 	DB = db
+	fmt.Println("✅ Connected to database successfully")
 	return db, nil
 }
 
