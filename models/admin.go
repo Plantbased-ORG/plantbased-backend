@@ -36,3 +36,22 @@ type UpdateProfileRequest struct {
 	FullName string `json:"full_name"`
 	Email    string `json:"email" binding:"email"`
 }
+
+// Testimonial represents a customer review
+type Testimonial struct {
+	ID        int       `json:"id"`
+	Name      string    `json:"name"`
+	Location  string    `json:"location"`
+	Review    string    `json:"review"`
+	Avatar    string    `json:"avatar"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// CreateTestimonialRequest represents the request to create a testimonial
+type CreateTestimonialRequest struct {
+	Name     string `json:"name" binding:"required"`
+	Location string `json:"location" binding:"required"`
+	Review   string `json:"review" binding:"required"`
+	Avatar   string `json:"avatar"`
+}
