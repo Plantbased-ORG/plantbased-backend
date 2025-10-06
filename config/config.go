@@ -28,6 +28,12 @@ type Config struct {
 	// Admin
 	AdminEmail    string
 	AdminPassword string
+
+	// Cloudinary
+	CloudinaryCloudName   string
+	CloudinaryAPIKey      string
+	CloudinaryAPISecret   string
+	CloudinaryUploadFolder string
 }
 
 var AppConfig *Config
