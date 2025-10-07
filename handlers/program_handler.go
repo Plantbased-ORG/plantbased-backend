@@ -104,6 +104,96 @@ func (h *ProgramHandler) CreateProgram(c *gin.Context) {
 	c.JSON(http.StatusCreated, response)
 }
 
+// UpdateProgram handles program updates with optional image changes
+func (h *ProgramHandler) UpdateProgram(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: "Invalid program ID",
+		})
+		return
+	}
+
+	// Parse multipart form
+	err = c.Request.ParseMultipartForm(32 << 20) // 32 MB max
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "Invalid form data",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	// Get text fields
+	name := c.PostForm("name")
+	shortDescription := c.PostForm("shortDescription")
+	introDescription := c.PostForm("introDescription")
+	whatCauses := c.PostForm("whatCauses")
+	healthRisks := c.PostForm("healthRisks")
+	strategies := c.PostForm("strategies")
+	conclusion := c.PostForm("conclusion")
+	pricingPlansJSON := c.PostForm("pricingPlans")
+
+	// Validate required fields
+	if name == "" || shortDescription == "" {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: "Missing required fields",
+		})
+		return
+	}
+
+	// Parse pricing plans (optional)
+	var pricingPlans []models.PricingPlanRequest
+	if pricingPlansJSON != "" {
+		if err := json.Unmarshal([]byte(pricingPlansJSON), &pricingPlans); err != nil {
+			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+				Error:   "Invalid pricing plans format",
+				Message: err.Error(),
+			})
+			return
+		}
+	}
+
+	// Get image files (all optional for updates)
+	images := make(map[string]multipart.File)
+	imageFields := []string{
+		"mainImage", "mainContentImage", "whatCausesImage",
+		"healthRisksImage", "strategiesImage", "conclusionImage",
+	}
+
+	for _, field := range imageFields {
+		file, _, err := c.Request.FormFile(field)
+		if err == nil {
+			images[field] = file
+			defer file.Close()
+		}
+	}
+
+	// Create request
+	req := models.CreateProgramRequest{
+		Name:             name,
+		ShortDescription: shortDescription,
+		IntroDescription: introDescription,
+		WhatCauses:       whatCauses,
+		HealthRisks:      healthRisks,
+		Strategies:       strategies,
+		Conclusion:       conclusion,
+		PricingPlans:     pricingPlans,
+	}
+
+	// Update program
+	response, err := h.programService.UpdateProgram(id, req, images)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "Failed to update program",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
 // GetAllPrograms retrieves all programs
 func (h *ProgramHandler) GetAllPrograms(c *gin.Context) {
 	programs, err := h.programService.GetAllPrograms()
@@ -173,5 +263,108 @@ func (h *ProgramHandler) DeleteProgram(c *gin.Context) {
 	c.JSON(http.StatusOK, models.SuccessResponse{
 		Success: true,
 		Message: "Program deleted successfully",
+	})
+}
+
+// AddPricingPlan adds a pricing plan to an existing program
+func (h *ProgramHandler) AddPricingPlan(c *gin.Context) {
+	programID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: "Invalid program ID",
+		})
+		return
+	}
+
+	var req models.PricingPlanRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "Invalid request",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	plan, err := h.programService.AddPricingPlan(programID, req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "Failed to add pricing plan",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, plan)
+}
+
+// UpdatePricingPlan updates a specific pricing plan
+func (h *ProgramHandler) UpdatePricingPlan(c *gin.Context) {
+	programID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: "Invalid program ID",
+		})
+		return
+	}
+
+	planID, err := strconv.Atoi(c.Param("plan_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: "Invalid pricing plan ID",
+		})
+		return
+	}
+
+	var req models.PricingPlanRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "Invalid request",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	plan, err := h.programService.UpdatePricingPlan(programID, planID, req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "Failed to update pricing plan",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, plan)
+}
+
+// DeletePricingPlan deletes a specific pricing plan
+func (h *ProgramHandler) DeletePricingPlan(c *gin.Context) {
+	programID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: "Invalid program ID",
+		})
+		return
+	}
+
+	planID, err := strconv.Atoi(c.Param("plan_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: "Invalid pricing plan ID",
+		})
+		return
+	}
+
+	err = h.programService.DeletePricingPlan(programID, planID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "Failed to delete pricing plan",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.SuccessResponse{
+		Success: true,
+		Message: "Pricing plan deleted successfully",
 	})
 }
