@@ -44,6 +44,7 @@ func SetupRoutes(router *gin.Engine, db *sql.DB) {
 		{
 			admin.GET("/profile", adminHandler.GetProfile)
 			admin.PUT("/profile", adminHandler.UpdateProfile)
+			admin.PUT("/change-password", adminHandler.ChangePassword)
 		}
 
 		// Program routes
