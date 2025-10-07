@@ -138,6 +138,165 @@ func (s *ProgramService) CreateProgram(
 	}, nil
 }
 
+// UpdateProgram updates an existing program (text fields only, images optional)
+func (s *ProgramService) UpdateProgram(
+	id int,
+	req models.CreateProgramRequest,
+	images map[string]multipart.File,
+) (*models.ProgramResponse, error) {
+	// Check if program exists
+	existingProgram, err := s.GetProgramByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Handle image updates (if new images provided)
+	mainImagePublicID := existingProgram.MainImagePublicID
+	mainImageURL := existingProgram.MainImageURL
+	if images["mainImage"] != nil {
+		newImage, err := utils.UploadImage(images["mainImage"], "programs")
+		if err != nil {
+			return nil, err
+		}
+		utils.DeleteImage(existingProgram.MainImagePublicID) // Delete old image
+		mainImagePublicID = newImage.PublicID
+		mainImageURL = newImage.SecureURL
+	}
+
+	mainContentImagePublicID := existingProgram.MainContentImagePublicID
+	mainContentImageURL := existingProgram.MainContentImageURL
+	if images["mainContentImage"] != nil {
+		newImage, err := utils.UploadImage(images["mainContentImage"], "programs")
+		if err != nil {
+			return nil, err
+		}
+		utils.DeleteImage(existingProgram.MainContentImagePublicID)
+		mainContentImagePublicID = newImage.PublicID
+		mainContentImageURL = newImage.SecureURL
+	}
+
+	whatCausesImagePublicID := existingProgram.WhatCausesImagePublicID
+	whatCausesImageURL := existingProgram.WhatCausesImageURL
+	if images["whatCausesImage"] != nil {
+		newImage, err := utils.UploadImage(images["whatCausesImage"], "programs")
+		if err != nil {
+			return nil, err
+		}
+		utils.DeleteImage(existingProgram.WhatCausesImagePublicID)
+		whatCausesImagePublicID = newImage.PublicID
+		whatCausesImageURL = newImage.SecureURL
+	}
+
+	healthRisksImagePublicID := existingProgram.HealthRisksImagePublicID
+	healthRisksImageURL := existingProgram.HealthRisksImageURL
+	if images["healthRisksImage"] != nil {
+		newImage, err := utils.UploadImage(images["healthRisksImage"], "programs")
+		if err != nil {
+			return nil, err
+		}
+		utils.DeleteImage(existingProgram.HealthRisksImagePublicID)
+		healthRisksImagePublicID = newImage.PublicID
+		healthRisksImageURL = newImage.SecureURL
+	}
+
+	strategiesImagePublicID := existingProgram.StrategiesImagePublicID
+	strategiesImageURL := existingProgram.StrategiesImageURL
+	if images["strategiesImage"] != nil {
+		newImage, err := utils.UploadImage(images["strategiesImage"], "programs")
+		if err != nil {
+			return nil, err
+		}
+		utils.DeleteImage(existingProgram.StrategiesImagePublicID)
+		strategiesImagePublicID = newImage.PublicID
+		strategiesImageURL = newImage.SecureURL
+	}
+
+	conclusionImagePublicID := existingProgram.ConclusionImagePublicID
+	conclusionImageURL := existingProgram.ConclusionImageURL
+	if images["conclusionImage"] != nil {
+		newImage, err := utils.UploadImage(images["conclusionImage"], "programs")
+		if err != nil {
+			return nil, err
+		}
+		utils.DeleteImage(existingProgram.ConclusionImagePublicID)
+		conclusionImagePublicID = newImage.PublicID
+		conclusionImageURL = newImage.SecureURL
+	}
+
+	// Update program in database
+	_, err = s.DB.Exec(`
+		UPDATE programs SET
+			name = $1, short_description = $2,
+			main_image_public_id = $3, main_image_url = $4,
+			intro_description = $5,
+			main_content_image_public_id = $6, main_content_image_url = $7,
+			what_causes = $8,
+			what_causes_image_public_id = $9, what_causes_image_url = $10,
+			health_risks = $11,
+			health_risks_image_public_id = $12, health_risks_image_url = $13,
+			strategies = $14,
+			strategies_image_public_id = $15, strategies_image_url = $16,
+			conclusion = $17,
+			conclusion_image_public_id = $18, conclusion_image_url = $19,
+			updated_at = NOW()
+		WHERE id = $20
+	`, req.Name, req.ShortDescription,
+		mainImagePublicID, mainImageURL,
+		req.IntroDescription,
+		mainContentImagePublicID, mainContentImageURL,
+		req.WhatCauses,
+		whatCausesImagePublicID, whatCausesImageURL,
+		req.HealthRisks,
+		healthRisksImagePublicID, healthRisksImageURL,
+		req.Strategies,
+		strategiesImagePublicID, strategiesImageURL,
+		req.Conclusion,
+		conclusionImagePublicID, conclusionImageURL,
+		id,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Update pricing plans (delete old ones and insert new ones)
+	if len(req.PricingPlans) > 0 {
+		// Delete existing pricing plans
+		_, err = s.DB.Exec("DELETE FROM program_pricing_plans WHERE program_id = $1", id)
+		if err != nil {
+			return nil, err
+		}
+
+		// Insert new pricing plans
+		for _, plan := range req.PricingPlans {
+			featuresJSON, _ := json.Marshal(plan.Features)
+			_, err = s.DB.Exec(`
+				INSERT INTO program_pricing_plans (program_id, name, subtitle, price, features)
+				VALUES ($1, $2, $3, $4, $5)
+			`, id, plan.Name, plan.Subtitle, plan.Price, featuresJSON)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	// Get updated program
+	program, err := s.GetProgramByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	pricingPlans, err := s.GetPricingPlansByProgramID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.ProgramResponse{
+		Program:      *program,
+		PricingPlans: pricingPlans,
+	}, nil
+}
+
 // GetAllPrograms retrieves all programs with their pricing plans
 func (s *ProgramService) GetAllPrograms() ([]models.ProgramResponse, error) {
 	rows, err := s.DB.Query(`
@@ -254,6 +413,80 @@ func (s *ProgramService) GetPricingPlansByProgramID(programID int) ([]models.Pro
 	}
 
 	return plans, nil
+}
+
+// AddPricingPlan adds a pricing plan to an existing program
+func (s *ProgramService) AddPricingPlan(programID int, req models.PricingPlanRequest) (*models.ProgramPricingPlan, error) {
+	// Verify program exists
+	_, err := s.GetProgramByID(programID)
+	if err != nil {
+		return nil, err
+	}
+
+	featuresJSON, _ := json.Marshal(req.Features)
+
+	var plan models.ProgramPricingPlan
+	err = s.DB.QueryRow(`
+		INSERT INTO program_pricing_plans (program_id, name, subtitle, price, features)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, program_id, name, subtitle, price, features, created_at, updated_at
+	`, programID, req.Name, req.Subtitle, req.Price, featuresJSON).Scan(
+		&plan.ID, &plan.ProgramID, &plan.Name, &plan.Subtitle,
+		&plan.Price, &featuresJSON, &plan.CreatedAt, &plan.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	json.Unmarshal(featuresJSON, &plan.Features)
+	return &plan, nil
+}
+
+// UpdatePricingPlan updates a specific pricing plan
+func (s *ProgramService) UpdatePricingPlan(programID, planID int, req models.PricingPlanRequest) (*models.ProgramPricingPlan, error) {
+	featuresJSON, _ := json.Marshal(req.Features)
+
+	var plan models.ProgramPricingPlan
+	err := s.DB.QueryRow(`
+		UPDATE program_pricing_plans
+		SET name = $1, subtitle = $2, price = $3, features = $4, updated_at = NOW()
+		WHERE id = $5 AND program_id = $6
+		RETURNING id, program_id, name, subtitle, price, features, created_at, updated_at
+	`, req.Name, req.Subtitle, req.Price, featuresJSON, planID, programID).Scan(
+		&plan.ID, &plan.ProgramID, &plan.Name, &plan.Subtitle,
+		&plan.Price, &featuresJSON, &plan.CreatedAt, &plan.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, errors.New("pricing plan not found")
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	json.Unmarshal(featuresJSON, &plan.Features)
+	return &plan, nil
+}
+
+// DeletePricingPlan deletes a specific pricing plan
+func (s *ProgramService) DeletePricingPlan(programID, planID int) error {
+	result, err := s.DB.Exec(`
+		DELETE FROM program_pricing_plans
+		WHERE id = $1 AND program_id = $2
+	`, planID, programID)
+
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return errors.New("pricing plan not found")
+	}
+
+	return nil
 }
 
 // DeleteProgram deletes a program and its images
