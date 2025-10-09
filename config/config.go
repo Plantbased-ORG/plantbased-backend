@@ -30,9 +30,9 @@ type Config struct {
 	AdminPassword string
 
 	// Cloudinary
-	CloudinaryCloudName   string
-	CloudinaryAPIKey      string
-	CloudinaryAPISecret   string
+	CloudinaryCloudName    string
+	CloudinaryAPIKey       string
+	CloudinaryAPISecret    string
 	CloudinaryUploadFolder string
 }
 
@@ -67,6 +67,12 @@ func LoadConfig() *Config {
 		// Admin
 		AdminEmail:    getEnv("ADMIN_EMAIL", "admin@plantbased.com"),
 		AdminPassword: getEnv("ADMIN_PASSWORD", ""),
+
+		// Cloudinary!
+		CloudinaryCloudName:    getEnv("CLOUDINARY_CLOUD_NAME", ""),
+		CloudinaryAPIKey:       getEnv("CLOUDINARY_API_KEY", ""),
+		CloudinaryAPISecret:    getEnv("CLOUDINARY_API_SECRET", ""),
+		CloudinaryUploadFolder: getEnv("CLOUDINARY_UPLOAD_FOLDER", "plantbased"),
 	}
 
 	return AppConfig
