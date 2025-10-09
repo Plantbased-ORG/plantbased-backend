@@ -15,6 +15,17 @@ var cld *cloudinary.Cloudinary
 
 // InitCloudinary initializes the Cloudinary client
 func InitCloudinary() error {
+	// Validate environment variables first
+	if config.AppConfig.CloudinaryCloudName == "" {
+		return fmt.Errorf("CLOUDINARY_CLOUD_NAME is not set")
+	}
+	if config.AppConfig.CloudinaryAPIKey == "" {
+		return fmt.Errorf("CLOUDINARY_API_KEY is not set")
+	}
+	if config.AppConfig.CloudinaryAPISecret == "" {
+		return fmt.Errorf("CLOUDINARY_API_SECRET is not set")
+	}
+
 	var err error
 	cld, err = cloudinary.NewFromParams(
 		config.AppConfig.CloudinaryCloudName,
@@ -24,11 +35,18 @@ func InitCloudinary() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize Cloudinary: %w", err)
 	}
+	
+	fmt.Println("✓ Cloudinary initialized successfully")
 	return nil
 }
 
 // UploadImage uploads an image to Cloudinary
 func UploadImage(file multipart.File, folder string) (*models.CloudinaryUploadResponse, error) {
+	// Check if Cloudinary is initialized
+	if cld == nil {
+		return nil, fmt.Errorf("cloudinary client not initialized - did you call InitCloudinary()?")
+	}
+
 	ctx := context.Background()
 
 	// Upload the file to Cloudinary
@@ -49,6 +67,11 @@ func UploadImage(file multipart.File, folder string) (*models.CloudinaryUploadRe
 
 // DeleteImage deletes an image from Cloudinary by public ID
 func DeleteImage(publicID string) error {
+	// Check if Cloudinary is initialized
+	if cld == nil {
+		return fmt.Errorf("cloudinary client not initialized")
+	}
+
 	ctx := context.Background()
 
 	_, err := cld.Upload.Destroy(ctx, uploader.DestroyParams{
