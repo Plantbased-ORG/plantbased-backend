@@ -46,3 +46,5 @@ func InitDB(cfg *config.Config) (*sql.DB, error) {
 func GetDB() *sql.DB {
 	return DB
 }
+
+// testing something here
