@@ -17,6 +17,7 @@ func SetupRoutes(router *gin.Engine, db *sql.DB) {
 	programService := services.NewProgramService(db)
 	testimonialService := services.NewTestimonialService(db)
 	emailService := services.NewEmailService()
+	paymentService := services.NewPaymentService()
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
@@ -24,6 +25,7 @@ func SetupRoutes(router *gin.Engine, db *sql.DB) {
 	programHandler := handlers.NewProgramHandler(programService)
 	testimonialHandler := handlers.NewTestimonialHandler(testimonialService)
 	customerHandler := handlers.NewCustomerHandler(emailService)
+	paymentHandler := handlers.NewPaymentHandler(paymentService)
 
 	// Health check
 	router.GET("/health", func(c *gin.Context) {
@@ -82,5 +84,8 @@ func SetupRoutes(router *gin.Engine, db *sql.DB) {
 
 		// Customer routes (public)
 		api.POST("/send-customer-details", customerHandler.SendCustomerDetails)
+
+		// Payment webhook (public)
+		api.POST("/paystack-webhook", paymentHandler.HandleWebhook)
 	}
 }
