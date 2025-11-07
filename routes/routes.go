@@ -16,12 +16,14 @@ func SetupRoutes(router *gin.Engine, db *sql.DB) {
 	adminService := services.NewAdminService(db)
 	programService := services.NewProgramService(db)
 	testimonialService := services.NewTestimonialService(db)
+	emailService := services.NewEmailService()
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	adminHandler := handlers.NewAdminHandler(adminService)
 	programHandler := handlers.NewProgramHandler(programService)
 	testimonialHandler := handlers.NewTestimonialHandler(testimonialService)
+	customerHandler := handlers.NewCustomerHandler(emailService)
 
 	// Health check
 	router.GET("/health", func(c *gin.Context) {
@@ -77,5 +79,8 @@ func SetupRoutes(router *gin.Engine, db *sql.DB) {
 			testimonials.PUT("/:id", middleware.AuthMiddleware(), testimonialHandler.UpdateTestimonial)
 			testimonials.DELETE("/:id", middleware.AuthMiddleware(), testimonialHandler.DeleteTestimonial)
 		}
+
+		// Customer routes (public)
+		api.POST("/send-customer-details", customerHandler.SendCustomerDetails)
 	}
 }
